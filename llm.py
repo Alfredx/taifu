@@ -8,6 +8,7 @@ from typing import List
 import streamlit as st
 from openai import OpenAI
 from typing_extensions import Annotated
+from loguru import logger
 
 import tool
 
@@ -161,11 +162,11 @@ def get_related_questions(query, contexts):
         related = response.choices[0].message.tool_calls[0].function.arguments
         if isinstance(related, str):
             related = json.loads(related)
-        print(f"Related questions: {related}")
+        logger.info(f"Related questions: {related}")
         return related["questions"][:5]
     except Exception as e:
         # For any exceptions, we will just return an empty list.
-        print(
+        logger.error(
             "encountered error while generating related questions:"
             f" {e}\n{traceback.format_exc()}"
         )
@@ -222,11 +223,11 @@ def get_related_concepts(query, contexts):
         related = response.choices[0].message.tool_calls[0].function.arguments
         if isinstance(related, str):
             related = json.loads(related)
-        print(f"Related concepts: {related}")
+        logger.info(f"Related concepts: {related}")
         return related["concepts"][:5]
     except Exception as e:
         # For any exceptions, we will just return an empty list.
-        print(
+        logger.error(
             "encountered error while generating related questions:"
             f" {e}\n{traceback.format_exc()}"
         )
@@ -324,6 +325,7 @@ def is_answer_denying_query(query, answer):
 def summarize_paper_with_moonshot(filepath, remove=False):
     llm = LLMModel(
         api_key=st.secrets['MOONSHOT_API_KEY'], model='moonshot-v1-128k', api_base="https://api.moonshot.cn/v1")
+    logger.info("sending chat to moonshot...")
     file_object = llm.client.files.create(file=Path(filepath), purpose="file-extract")
     file_content = llm.client.files.content(file_id=file_object.id).text
     stream = llm.client.chat.completions.create(

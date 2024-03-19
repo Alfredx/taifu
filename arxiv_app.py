@@ -2,15 +2,17 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-
 import streamlit as st
+from loguru import logger
 from streamlit_markmap import markmap
 
-from llm import (get_rag_query, get_related_questions, is_answer_denying_query, get_related_concepts, chat_on_paper_with_moonshot,
-                 summarize_paper_with_moonshot, summarize_query_to_name)
+from llm import (chat_on_paper_with_moonshot, get_rag_query,
+                 get_related_concepts, get_related_questions,
+                 is_answer_denying_query, summarize_paper_with_moonshot,
+                 summarize_query_to_name)
 from search.arxiv import ArxivSearch
-from structs import ChatMessage, Node
 from slides import SlidesGenerator
+from structs import ChatMessage, Node
 
 st.set_page_config(page_title="Taifu-太傅", layout="wide")
 
@@ -90,13 +92,17 @@ def start_chat_with_paper(current_node: Node, article):
 
 
 def get_paper_related_questions(current_node: Node, summary: str):
+    logger.info("getting related questions...")
     current_node.related_questions = get_related_questions(
         current_node.name, summary)
+    logger.info("getting related questions...done")
 
 
 def get_paper_related_concepts(current_node: Node, summary: str):
+    logger.info("getting related concepts...")
     current_node.related_concepts = get_related_concepts(
         current_node.name, summary)
+    logger.info("getting related concepts...done")
 
 
 def display_search_result(node: Node):
@@ -199,7 +205,9 @@ with col_right.container():
             st.write(message.message)
     if current_node.current_stream:
         with st.chat_message("assistant"):
+            logger.info("start writing stream...")
             response = st.write_stream(current_node.current_stream)
+        logger.info("stream chat written.")
         current_node.messages.append(ChatMessage(
             role="assistant", message=response))
         current_node.current_stream = None

@@ -72,14 +72,17 @@ class ArxivSearch(object):
         if not os.path.isdir(pdf_dir):
             os.mkdir(pdf_dir)
         filename = f"{pdf_dir}/{article['id'] + '.pdf'}"
+        logger.info(f"downloading arxiv pdf... {filename}")
         if not os.path.exists(filename):
             r = requests.get(article['pdf_url'], allow_redirects=True)
             with open(filename, "wb") as f:
                 f.write(r.content)
         text = ""
+        logger.info(f"reading pdf...")
         with fitz.open(filename) as doc:
             for page in doc:
                 text += page.get_text()
+        logger.info(f"reading pdf...done")
         return text
 
 
