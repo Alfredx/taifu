@@ -341,7 +341,7 @@ def summarize_paper_with_moonshot(filepath, remove=False):
             },
             {
                 "role": "user",
-                "content": f"I will tip you 500 dollars for a better result! Summarize this paper for me. You are going to do these in two steps. First, extract the title of the paper, the name of the Authors, the submission Date, the abstract, and the titles of each chapter. Second, summarize each chapter. You are going to do these step by step. Output all the information you extracted one by one in a well-structured Markdown format and with a bold title before each paragraph. Before each title, put an '\n' at the end. Remember, ONLY output the summary. This is very important to me. ",
+                "content": f"I will tip you 500 dollars for a better result! Summarize this paper for me. You are going to do these in two steps. First, extract the title of the paper, the name of the Authors, the submission Date, the abstract, and the titles of each chapter. Second, summarize each chapter including its key points and the user's opinion. You are going to do these step by step. Output all the information you extracted one by one in a well-structured Markdown format and with a bold title before each paragraph. Before each title, put an '\n' at the end. Remember, ONLY output the summary. This is very important to me. ",
             }
         ],
         stream=True,
