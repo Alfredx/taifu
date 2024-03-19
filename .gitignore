@@ -1,0 +1,8 @@
+__pycache__
+.streamlit
+.cache
+
+*.pdf
+*.ppt
+*.pptx
+arxiv_pdf
