@@ -32,7 +32,7 @@ if "thread_pool_executor" not in st.session_state:
 if "mindmap_generator" not in st.session_state:
     st.session_state.mindmap_generator = None
 if "global_search_result" not in st.session_state:
-    st.session_state.global_search_result = []
+    st.session_state.global_search_result = None
 if "ppt_download_path" not in st.session_state:
     st.session_state.ppt_download_path = ""
 
@@ -107,21 +107,23 @@ def get_paper_related_concepts(current_node: Node, summary: str):
 
 def display_search_result(node: Node):
     current_node = st.session_state.current_node
-    for article in st.session_state.global_search_result:
-        with st.container(border=True):
-            col_title, col_link, col_chat_btn = st.columns([6, 1, 2])
-            with col_title.container():
-                st.write(f"**{article['title']}**")
-                # st.page_link(article['url'], label=article['title'], icon="🔗", use_container_width=True, help=article['title'])
-            with col_link.container():
-                st.page_link(article['url'], label="🔗"
-                            , use_container_width=True)
-            with col_chat_btn.container():
-                st.button("Chat", use_container_width=True,
-                          key=article['id'], on_click=start_chat_with_paper, args=(current_node, article))
-            with st.container(height=155, border=False):
-                st.write(f"**Authors:** {article['authors']}")
-                st.caption(f"**Abstract:** {article['abstract']}")
+    if st.session_state.global_search_result is not None:
+        st.text(f"Total search records: {len(st.session_state.global_search_result)}")
+        for article in st.session_state.global_search_result:
+            with st.container(border=True):
+                col_title, col_link, col_chat_btn = st.columns([6, 1, 2])
+                with col_title.container():
+                    st.write(f"**{article['title']}**")
+                    # st.page_link(article['url'], label=article['title'], icon="🔗", use_container_width=True, help=article['title'])
+                with col_link.container():
+                    st.page_link(article['url'], label="🔗"
+                                , use_container_width=True)
+                with col_chat_btn.container():
+                    st.button("Chat", use_container_width=True,
+                            key=article['id'], on_click=start_chat_with_paper, args=(current_node, article))
+                with st.container(height=155, border=False):
+                    st.write(f"**Authors:** {article['authors']}")
+                    st.caption(f"**Abstract:** {article['abstract']}")
 
 
 def on_related_concept(current_node: Node, concept: str):
