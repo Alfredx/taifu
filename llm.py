@@ -133,8 +133,8 @@ def get_related_questions(query, contexts):
         llm = LLMModel(
             api_key=st.secrets['OPENAI_API_KEY'], model='gpt-4-0125-preview')
         response = llm.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            # model=llm.model,
+            # model="gpt-3.5-turbo",
+            model=llm.model,
             messages=[
                 {
                     "role": "system",
