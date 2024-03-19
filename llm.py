@@ -73,9 +73,7 @@ _more_questions_prompt2 = """
 """
 
 _more_questions_prompt3 = """
-You are a helpful assistant that helps the user to ask related questions about a paper. You are going to do these in two steps. First Identify worthwhile topics that can be follow-ups. Second write questions no longer than 20 words about each topics. Do it step by step. Make sure that specifics, like events, names, locations, are included in follow up questions so they can be asked standalone. For example, if the topic is "the Manhattan project", in the follow up question, do not just say "the project", but use the full name "the Manhattan project".
-
-Remember, each related question should be no longer than 20 words.
+You are a helpful assistant that helps the user to ask related questions about a paper. You are going to do these in two steps. First Identify worthwhile concepts that can be follow-ups. Second write questions no longer than 20 words about each concept. Do these step by step. Make sure that specifics, like events, names, locations, are included in the questions so they can be asked standalone. For example, if the concept is "the Manhattan project", in the question, do not just say "the project", but use the full name "the Manhattan project".
 """
 _more_concepts_prompt = """
 You are a helpful assistant that helps the user to ask related concepts about a paper. You are going to do these in two steps. First Identify worthwhile concepts that can be follow-ups. Second filter out the concepts that are not fully explained in the paper. Do it step by step. Make sure that specifics, like events, names, locations, are included in the concepts so they can be asked standalone. For example, if the concept is "the Manhattan project", do not just say "the project", but use the full name "the Manhattan project".

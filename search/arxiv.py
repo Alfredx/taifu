@@ -73,7 +73,7 @@ class ArxivSearch(object):
             os.mkdir(pdf_dir)
         filename = f"{pdf_dir}/{article['id'] + '.pdf'}"
         if not os.path.exists(filename):
-            r = requests.get(article['pdf_url'].replace("https://arxiv.org", "http://xxx.itp.ac.cn"), allow_redirects=True)
+            r = requests.get(article['pdf_url'], allow_redirects=True)
             with open(filename, "wb") as f:
                 f.write(r.content)
         text = ""
