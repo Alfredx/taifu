@@ -31,13 +31,13 @@ class GoogleScholarSearch(object):
                 'main_author': r['bib']['author'][0],
                 'authors': authors,
                 'url': r['pub_url'],
-                'pdf_url': r['eprint_url'],
+                'pdf_url': r.get('eprint_url', r['pub_url'].replace('abs','pdf')),
                 'title': r['bib']['title'],
                 'abstract': r['bib']['abstract'],
                 'update_date': '',
                 'publish_date': r['bib']['pub_year'],
                 'comment': '',
-                'journal_ref': '',
+                'journal_ref': r['bib']['venue'],
                 'num_citations': r['num_citations']
             }
             articles.append(article)

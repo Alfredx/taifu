@@ -133,7 +133,7 @@ def display_search_result(node: Node):
                             key=article['id'], on_click=start_chat_with_paper, args=(current_node, article))
                 with st.container(height=155, border=False):
                     author_md = ", ".join([f"[{author['name']}](https://scholar.google.com/citations?user={author['id']})" if author['id'] else author['name'] for author in article['authors']])
-                    st.write(f"{author_md}, {article['publish_date']}, Cited by {article['num_citations']}")
+                    st.write(f"{author_md} - {article['journal_ref']}, {article['publish_date']}, Cited by {article['num_citations']}")
                     st.caption(f"**Abstract:** {article['abstract']}")
 
 
