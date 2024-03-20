@@ -1,5 +1,5 @@
 
-import time
+from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 
 import streamlit as st
@@ -60,10 +60,19 @@ def do_query(query):
     query_result = search.search(query)
     st.session_state.query_prompt = f"主题> {query}"
     st.session_state.global_search_result = query_result
-    # contexts = query_result
-    # current_node.answer = get_rag_query(query, contexts)
-    # more_related_questions = get_related_questions(query, contexts)
-    # current_node.related_questions = more_related_questions
+
+def do_advanced_query(query: str, year_from: str, sort_by: str):
+    current_node = st.session_state.current_node
+    if current_node is st.session_state.root_node:
+        current_node.query = query
+        current_node.name = query
+    if year_from.lower() == "unlimited":
+        year_from = None
+    else:
+        year_from = int(year_from.split(" ")[-1])
+    query_result = search.search(query, year_from, sort_by.lower())
+    st.session_state.query_prompt = f"主题> {query}"
+    st.session_state.global_search_result = query_result
 
 
 def rag_query_to_node(query, contexts, node: Node) -> None:
@@ -123,7 +132,8 @@ def display_search_result(node: Node):
                     st.button("Chat", use_container_width=True,
                             key=article['id'], on_click=start_chat_with_paper, args=(current_node, article))
                 with st.container(height=155, border=False):
-                    st.write(f"**{article['authors']}**, {article['publish_date']}, Cited by {article['num_citations']}")
+                    author_md = ", ".join([f"[{author['name']}](https://scholar.google.com/citations?user={author['id']})" if author['id'] else author['name'] for author in article['authors']])
+                    st.write(f"{author_md}, {article['publish_date']}, Cited by {article['num_citations']}")
                     st.caption(f"**Abstract:** {article['abstract']}")
 
 
@@ -191,9 +201,21 @@ with col_left.container():
     data = buildMarkmapData(st.session_state.root_node)
     with st.container(border=True, height=250):
         markmap(data, height=200)
-    if query := st.chat_input(st.session_state.query_prompt):
-        do_query(query)
-        st.rerun()
+    col_search_bar, col_advanced = st.columns([4,1])
+    with col_search_bar.container():
+        if query := st.chat_input(st.session_state.query_prompt):
+            do_query(query)
+            st.rerun()
+    with col_advanced.container():
+        popover = st.popover("高级", help="高级搜索")
+        query = popover.text_input("Topic AND/OR Author")
+        unlimited = "Unlimited"
+        this_year = f"Since {date.today().year}"
+        last_year = f"Since {date.today().year - 1}"
+        four_years_ago = f"Since {date.today().year - 4}"
+        date_range = popover.selectbox("Published Year", [unlimited, this_year, last_year, four_years_ago])
+        sort_by = popover.selectbox("Sort by", ["Relevance", "Date"])
+        popover.button("Search", type="primary", on_click=do_advanced_query, args=(query, date_range, sort_by))
     # render current node
     display_search_result(current_node)
 with col_right.container():

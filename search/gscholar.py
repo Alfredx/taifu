@@ -1,23 +1,35 @@
-from scholarly import scholarly
 import os
-from loguru import logger
-import requests
+
 import fitz
+import requests
+import streamlit as st
+from loguru import logger
+from scholarly import scholarly
+
 
 class GoogleScholarSearch(object):
 
-    def search(self, content: str):
+    def search(self, content: str, year_from: int = None, sort_by: str = "relevance"):
         query_str = f"{content} site:arxiv.org"
-        query = scholarly.search_pubs(query_str)
+        query = scholarly.search_pubs(
+            query_str, year_low=year_from, sort_by=sort_by)
         articles = []
         for i in range(10):
             r = next(query)
+            logger.info(r)
+            authors = []
+            for i, name in enumerate(r['bib']['author']):
+                author_id = r['author_id'][i]
+                authors.append({
+                    'name': name,
+                    'id': author_id,
+                })
             article = {
                 'id': r['pub_url'].split('/abs/')[-1],
                 'term': '',
                 'terms': '',
                 'main_author': r['bib']['author'][0],
-                'authors': ", ".join(r['bib']['author']),
+                'authors': authors,
                 'url': r['pub_url'],
                 'pdf_url': r['eprint_url'],
                 'title': r['bib']['title'],
@@ -38,7 +50,10 @@ class GoogleScholarSearch(object):
         filename = f"{pdf_dir}/{article['id'] + '.pdf'}"
         logger.info(f"downloading arxiv pdf... {filename}")
         if not os.path.exists(filename):
-            r = requests.get(article['pdf_url'], allow_redirects=True)
+            pdf_url = article['pdf_url']
+            if mirror_url := st.secrets.get("ARXIV_DOWNLOAD_URL", ""):
+                pdf_url = article['pdf_url'].replace("https://arxiv.org", mirror_url)
+            r = requests.get(article['pdf_url'].replace("html", "pdf"), allow_redirects=True)
             with open(filename, "wb") as f:
                 f.write(r.content)
         text = ""

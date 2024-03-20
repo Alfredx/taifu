@@ -6,3 +6,5 @@ __pycache__
 *.ppt
 *.pptx
 arxiv_pdf
+
+.DS_Store

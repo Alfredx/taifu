@@ -1,10 +1,12 @@
+import os
 from typing import List
-from loguru import logger
+
+import feedparser
 import fitz
 import requests
-import os
-import feedparser
+import streamlit as st
 from dateutil import parser
+from loguru import logger
 
 
 class ArxivSearch(object):
@@ -21,7 +23,8 @@ class ArxivSearch(object):
         # articles = arxivpy.query(
         #     search_query=search_query, results_per_iteration=20, max_index=20, sort_by="relevance")
         articles = []
-        response = requests.get(f"http://export.arxiv.org/api/query?search_query={search_query}&sortBy=relevance")
+        response = requests.get(
+            f"http://export.arxiv.org/api/query?search_query={search_query}&sortBy=relevance")
         entries = feedparser.parse(response.content.decode())
         for entry in entries['entries']:
             if entry['title'] == 'Error':
@@ -30,14 +33,16 @@ class ArxivSearch(object):
             terms = '|'.join([tag['term'] for tag in entry['tags']])
             main_author = entry['author']
             update_date = parser.parse(entry['updated'])
-            authors = ', '.join([author['name'].strip() for author in entry['authors']])
+            authors = ', '.join([author['name'].strip()
+                                for author in entry['authors']])
             url = entry['link']
             for e in entry['links']:
                 if 'title' in e.keys():
                     if e['title'] == 'pdf':
                         pdf_url = e['href']
                 else:
-                    pdf_url = 'http://arxiv.org/pdf/%s' % url.split('/abs/')[-1]
+                    pdf_url = 'http://arxiv.org/pdf/%s' % url.split(
+                        '/abs/')[-1]
             if 'arxiv_comment' in entry.keys():
                 comment = entry['arxiv_comment']
             else:
@@ -74,7 +79,12 @@ class ArxivSearch(object):
         filename = f"{pdf_dir}/{article['id'] + '.pdf'}"
         logger.info(f"downloading arxiv pdf... {filename}")
         if not os.path.exists(filename):
-            r = requests.get(article['pdf_url'], allow_redirects=True)
+            pdf_url = article['pdf_url']
+            if mirror_url := st.secrets.get("ARXIV_DOWNLOAD_URL", ""):
+                pdf_url = article['pdf_url'].replace(
+                    "https://arxiv.org", mirror_url)
+            r = requests.get(article['pdf_url'].replace(
+                "html", "pdf"), allow_redirects=True)
             with open(filename, "wb") as f:
                 f.write(r.content)
         text = ""
