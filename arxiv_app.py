@@ -11,6 +11,7 @@ from llm import (chat_on_paper_with_moonshot, get_rag_query,
                  is_answer_denying_query, summarize_paper_with_moonshot,
                  summarize_query_to_name)
 from search.arxiv import ArxivSearch
+from search.gscholar import GoogleScholarSearch
 from slides import SlidesGenerator
 from structs import ChatMessage, Node
 
@@ -36,7 +37,7 @@ if "global_search_result" not in st.session_state:
 if "ppt_download_path" not in st.session_state:
     st.session_state.ppt_download_path = ""
 
-search = ArxivSearch()
+search = GoogleScholarSearch()
 
 
 def buildMarkmapData(node: Node, depth: int = 0) -> str:
@@ -122,7 +123,7 @@ def display_search_result(node: Node):
                     st.button("Chat", use_container_width=True,
                             key=article['id'], on_click=start_chat_with_paper, args=(current_node, article))
                 with st.container(height=155, border=False):
-                    st.write(f"**Authors:** {article['authors']}")
+                    st.write(f"**{article['authors']}**, {article['publish_date']}, Cited by {article['num_citations']}")
                     st.caption(f"**Abstract:** {article['abstract']}")
 
 
