@@ -24,6 +24,7 @@ class Node(object):
     current_stream: Any = None
     node_type: Literal["concept", "paper"] = "concept"  # either concept or paper
     messages: List[ChatMessage] = field(default_factory=list)
+    need_upload_paper: bool = False
 
     def get_child_by_name(self, name: str) -> "Node":
         for child in self.children:

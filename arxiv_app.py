@@ -14,6 +14,7 @@ from search.arxiv import ArxivSearch
 from search.gscholar import GoogleScholarSearch
 from slides import SlidesGenerator
 from structs import ChatMessage, Node
+import fitz
 
 st.set_page_config(page_title="Taifu-太傅", layout="wide")
 
@@ -104,12 +105,15 @@ def start_chat_with_paper(current_node: Node, article):
         node = Node(name=article['title'])
         node.article = article
         node.node_type = "paper"
-        node.paper_content = search.download_and_read(article)
         node.prev = parent_node
         parent_node.children.append(node)
         st.session_state.current_node = node
-        node.current_stream = summarize_paper_with_moonshot(
-            f"arxiv_pdf/{article['id'] + '.pdf'}", st.secrets.get('DELETE_PAPER', False))
+        if "arxiv.org" not in article['url']:
+            node.need_upload_paper = True
+        else:
+            node.paper_content = search.download_and_read(article)
+            node.current_stream = summarize_paper_with_moonshot(
+                f"arxiv_pdf/{article['id'] + '.pdf'}", st.secrets.get('DELETE_PAPER', False))
 
 
 def get_paper_related_questions(current_node: Node, summary: str):
@@ -240,9 +244,41 @@ with col_right.container():
     current_node = st.session_state.current_node
     if current_node.article:
         st.markdown(f"### {current_node.article['title']}")
+        if current_node.need_upload_paper:
+            st.write("We currently don't support reading paper from this website.")
+            if paper := st.file_uploader("But you can upload by yourself. Choose a PDF file:", type="pdf"):
+                bytes_data = paper.read()
+                filepath = current_node.article['title'].lower().replace(" ", "_") + ".pdf"
+                with open(filepath, "wb") as f:
+                    f.write(bytes_data)
+                current_node.need_upload_paper = False
+                current_node.current_stream = summarize_paper_with_moonshot(filepath, True)
+                st.rerun()
     # with col_cite.container():
     #     st.button("Cite me", type="primary", use_container_width=True)
     # Chat part
+    else:
+        search_result = st.session_state.global_search_result
+        if search_result:
+            sorted_search_result = sorted(search_result, key=lambda x: x['num_citations'], reverse=True)
+            st.write(f"#### {st.session_state.query_prompt}")
+            st.write("You may interested in (most cited):")
+            for article in sorted_search_result[:3]:
+                with st.container(border=True):
+                    col_title, col_link, col_chat_btn = st.columns([6, 1, 2])
+                    with col_title.container():
+                        st.write(f"**{article['title']}**")
+                    with col_link.container():
+                        st.page_link(article['url'], label="🔗"
+                                    , use_container_width=True)
+                    with col_chat_btn.container():
+                        st.button("Chat", use_container_width=True,
+                                key=f"interest_{article['id']}", on_click=start_chat_with_paper, args=(current_node, article))
+                    with st.container(border=False):
+                        author_md = ", ".join([f"[{author['name']}]({author['citation_url']})" if author['id'] else author['name'] for author in article['authors']])
+                        st.write(f"{author_md} - {article['journal_ref']}, {article['publish_date']}, Cited by {article['num_citations']}")
+                        st.caption(f"**Abstract:** {article['abstract']}")
+        
     for message in current_node.messages:
         with st.chat_message(message.role):
             st.write(message.message, unsafe_allow_html=True)

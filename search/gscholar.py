@@ -12,7 +12,7 @@ class GoogleScholarSearch(object):
         self.last_query = None
 
     def search(self, content: str, year_from: int = None, sort_by: str = "relevance"):
-        query_str = f"{content} site:arxiv.org"
+        query_str = f"{content}"
         query = scholarly.search_pubs(
             query_str, year_low=year_from, sort_by=sort_by)
         self.last_query = query
