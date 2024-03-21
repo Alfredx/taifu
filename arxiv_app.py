@@ -245,7 +245,7 @@ with col_right.container():
     # Chat part
     for message in current_node.messages:
         with st.chat_message(message.role):
-            st.write(message.message)
+            st.write(message.message, unsafe_allow_html=True)
     if current_node.current_stream:
         with st.chat_message("assistant"):
             logger.info("start writing stream...")
@@ -258,6 +258,7 @@ with col_right.container():
             get_paper_related_questions(current_node, response)
         if not current_node.related_concepts:
             get_paper_related_concepts(current_node, response)
+        st.rerun()
 
     if current_node.messages and not current_node.current_stream:
         col_related_questions, col_related_concepts = st.columns([1, 1])

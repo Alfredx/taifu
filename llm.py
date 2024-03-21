@@ -324,8 +324,11 @@ def is_answer_denying_query(query, answer):
 
 def summarize_paper_with_moonshot(filepath, remove=False):
     llm = LLMModel(
-        api_key=st.secrets['MOONSHOT_API_KEY'], model='moonshot-v1-128k', api_base="https://api.moonshot.cn/v1")
+        api_key=st.secrets['MOONSHOT_API_KEY'], model='moonshot-v1-32k', api_base="https://api.moonshot.cn/v1")
     logger.info("sending chat to moonshot...")
+    # llm = LLMModel(
+    #     api_key=st.secrets['OPENAI_API_KEY'], model='gpt-4-0125-preview')
+    # logger.info("sending chat to gpt4...")
     file_object = llm.client.files.create(file=Path(filepath), purpose="file-extract")
     file_content = llm.client.files.content(file_id=file_object.id).text
     stream = llm.client.chat.completions.create(
@@ -341,8 +344,47 @@ def summarize_paper_with_moonshot(filepath, remove=False):
             },
             {
                 "role": "user",
-                "content": f"I will tip you 500 dollars for a better result! Summarize this paper for me. You are going to do these in two steps. First, extract the title of the paper, the name of the Authors, the submission Date, the abstract, and the titles of each chapter. Second, summarize each chapter including its key points and the user's opinion. You are going to do these step by step. Output all the information you extracted one by one in a well-structured Markdown format and with a bold title before each paragraph. Before each title, put an '\n' at the end. Remember, ONLY output the summary. This is very important to me. ",
+                "content": f"I will tip you 500 dollars for a better result! Summarize this paper for me. You are going to do these in two steps. First, extract the title of the paper, the name of the Authors, the affiliation, the submission Date, the abstract, and the titles of each chapter. Second, summarize each chapter including its key points and the user's opinion with bullet dots. You are going to do these step by step. Output all the information you extracted one by one in a well-structured Markdown format. After each title, put a '\n\n' at the end. Remember, ONLY output the summary. This is very important to me. ",
+            },
+            {
+                "role": "assistant",
+                "content": f"""
+**Title:** xxx
+
+**Authors:** aaa, bbb, cc
+
+**Affiliation:** Apple.Inc
+
+<details><summary>**Abstract:**</summary>
+
+this is abstract.</details>
+
+<details><summary>**Introduction:**</summary>
+
+this is introduction.</details>
+
+<details><summary>**Related Work**</summary>
+
+this is related work.</details>
+
+<details><summary>**Methodology**</summary>
+
+this is methodology.</details>
+
+<details><summary>**Experiment**</summary>
+
+this is experiment.</details>
+
+<details><summary>**Conclusions**</summary>
+
+this is conclusions.</details>
+"""
+            },
+            {
+                "role": "user",
+                "content": "I will tip you 500 dollars again for a better result! Now Generate again under my previous command. But DO NOT put Abstract, Introduction and Conclusion chapters in <details> tag."
             }
+
         ],
         stream=True,
     )
