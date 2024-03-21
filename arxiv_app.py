@@ -36,8 +36,9 @@ if "global_search_result" not in st.session_state:
     st.session_state.global_search_result = None
 if "ppt_download_path" not in st.session_state:
     st.session_state.ppt_download_path = ""
-
-search = GoogleScholarSearch()
+if "search" not in st.session_state:
+    search = GoogleScholarSearch()
+    st.session_state.search = search
 
 
 def buildMarkmapData(node: Node, depth: int = 0) -> str:
@@ -57,9 +58,17 @@ def do_query(query):
     if current_node is st.session_state.root_node:
         current_node.query = query
         current_node.name = query
+    search = st.session_state.search
     query_result = search.search(query)
     st.session_state.query_prompt = f"主题> {query}"
     st.session_state.global_search_result = query_result
+
+def do_more_query(length:int = 10):
+    if st.session_state.global_search_result is None:
+        return
+    search = st.session_state.search
+    query_result = search.more(length)
+    st.session_state.global_search_result += query_result
 
 def do_advanced_query(query: str, year_from: str, sort_by: str):
     current_node = st.session_state.current_node
@@ -70,6 +79,7 @@ def do_advanced_query(query: str, year_from: str, sort_by: str):
         year_from = None
     else:
         year_from = int(year_from.split(" ")[-1])
+    search = st.session_state.search
     query_result = search.search(query, year_from, sort_by.lower())
     st.session_state.query_prompt = f"主题> {query}"
     st.session_state.global_search_result = query_result
@@ -90,6 +100,7 @@ def start_chat_with_paper(current_node: Node, article):
     if node := parent_node.get_child_by_name(article['title']):
         st.session_state.current_node = node
     else:
+        search = st.session_state.search
         node = Node(name=article['title'])
         node.article = article
         node.node_type = "paper"
@@ -132,9 +143,16 @@ def display_search_result(node: Node):
                     st.button("Chat", use_container_width=True,
                             key=article['id'], on_click=start_chat_with_paper, args=(current_node, article))
                 with st.container(height=155, border=False):
-                    author_md = ", ".join([f"[{author['name']}](https://scholar.google.com/citations?user={author['id']})" if author['id'] else author['name'] for author in article['authors']])
+                    author_md = ", ".join([f"[{author['name']}]({author['citation_url']})" if author['id'] else author['name'] for author in article['authors']])
                     st.write(f"{author_md} - {article['journal_ref']}, {article['publish_date']}, Cited by {article['num_citations']}")
                     st.caption(f"**Abstract:** {article['abstract']}")
+        if len(st.session_state.global_search_result) < 30: # to prevent blocked by google
+            _, col_next, _ = st.columns([1,1,1])
+            with col_next.container():
+                st.button("More", on_click=do_more_query, args=(10,), use_container_width=True)
+        else:
+            st.text("We only support maximum 30 records now.")
+        
 
 
 def on_related_concept(current_node: Node, concept: str):
