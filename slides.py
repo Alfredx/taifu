@@ -1,4 +1,6 @@
 from pptx import Presentation
+from pptx.util import Pt
+from pptx.enum.text import MSO_AUTO_SIZE
 from structs import Node
 from typing import Generator, Tuple, Any
 
@@ -12,8 +14,10 @@ class SlidesGenerator(object):
         self._gen_cover()
         self._gen_outline()
         for node, depth in self._walk_through_node(self.root):
+            if node.node_type == "paper":
+                self._gen_paper_slide(node)
             if node.node_type == "concept":
-                self._gen_detail(node)
+                self._gen_concept_slide(node)
     
     def save(self, path: str="") -> None:
         filepath = f"{self.root.name.lower().replace(' ', '_')}.pptx" if not path else path
@@ -48,22 +52,44 @@ class SlidesGenerator(object):
             p.level = depth
                 
 
-    def _gen_detail(self, node: Node) -> None:
+    def _gen_paper_slide(self, node: Node) -> None:
         bullet_slide_layout = self.prs.slide_layouts[1]
         slide = self.prs.slides.add_slide(bullet_slide_layout)
         shapes = slide.shapes
         title_shape = shapes.title
         title_shape.text = node.name
         body_shape = shapes.placeholders[1]
+        tf = body_shape.text_frame
+        tf.text = f"By {', '.join([a['name'] for a in node.article['authors']])}, {node.article['publish_date']}"
+        summary_lines = node.chat_summary.split("\n")
+        for line in summary_lines:
+            p = tf.add_paragraph()
+            p.text = line
+            p.level = 0
+            p.font.size = Pt(14)
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+
+    def _gen_concept_slide(self, node: Node) -> None:
+        if not node.children:
+            # 如果是没有关联论文的概念，那么就先不放在PPT里
+            return
+        bullet_slide_layout = self.prs.slide_layouts[1]
+        slide = self.prs.slides.add_slide(bullet_slide_layout)
+        shapes = slide.shapes
+        title_shape = shapes.title
+        title_shape.text = node.display_name
+        body_shape = shapes.placeholders[1]
         tf = None
         for child in node.children:
+            if child.node_type != "paper":
+                continue 
             if not tf:
                 tf = body_shape.text_frame
-                tf.text = child.display_name
+                tf.text = node.display_name
                 continue
             p = tf.add_paragraph()
-            p.text = child.display_name
-            p.level = 1
+            p.text = node.display_name
+            p.level = 0
 
     def _walk_through_node(self, node: Node, depth=0) -> Generator[Tuple[Node, int], Any, Any]:
         """深度优先遍历"""

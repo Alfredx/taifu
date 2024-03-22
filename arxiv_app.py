@@ -8,7 +8,7 @@ from streamlit_markmap import markmap
 
 from llm import (chat_on_paper_with_moonshot, get_rag_query,
                  get_related_concepts, get_related_questions,
-                 is_answer_denying_query, summarize_paper_with_moonshot,
+                 is_answer_denying_query, summarize_paper_with_moonshot, summarize_chat,
                  summarize_query_to_name)
 from search.arxiv import ArxivSearch
 from search.gscholar import GoogleScholarSearch
@@ -194,6 +194,11 @@ def gen_ppt():
     filepath = gen.save()
     st.session_state.ppt_download_path = filepath
 
+def summarize_chat_to_single_slide(current_node: Node):
+    current_node.current_stream = summarize_chat(current_node.messages)
+    current_node.next_stream_is_summary = True
+
+
 current_node = st.session_state.current_node
 with st.sidebar:
     st.button("Generate PPT", on_click=gen_ppt, type="primary", use_container_width=True)
@@ -223,14 +228,19 @@ with col_left.container():
     data = buildMarkmapData(st.session_state.root_node)
     with st.container(border=True, height=250):
         markmap(data, height=200)
+    use_arxiv_only = st.checkbox("Only search from arxiv.org")
     col_search_bar, col_advanced = st.columns([4,1])
     with col_search_bar.container():
         if query := st.chat_input(st.session_state.query_prompt):
+            if use_arxiv_only:
+                query += " site:arxiv.org"
             do_query(query)
             st.rerun()
     with col_advanced.container():
         popover = st.popover("高级", help="高级搜索")
         query = popover.text_input("Topic AND/OR Author")
+        if use_arxiv_only:
+            query += " site:arxiv.org"
         unlimited = "Unlimited"
         this_year = f"Since {date.today().year}"
         last_year = f"Since {date.today().year - 1}"
@@ -254,6 +264,13 @@ with col_right.container():
                 current_node.need_upload_paper = False
                 current_node.current_stream = summarize_paper_with_moonshot(filepath, True)
                 st.rerun()
+            st.divider()
+            col_no_paper_hint, _, col_drop_paper = st.columns([2,1,1])
+            with col_no_paper_hint.container():
+                st.write("Haven't obtained this paper?")
+            with col_drop_paper.container():
+                popover = st.popover("Drop it", use_container_width=True)
+                popover.button("Confirm", on_click=remove_node, args=(current_node,), type="primary", use_container_width=True)
     # with col_cite.container():
     #     st.button("Cite me", type="primary", use_container_width=True)
     # Chat part
@@ -262,7 +279,7 @@ with col_right.container():
         if search_result:
             sorted_search_result = sorted(search_result, key=lambda x: x['num_citations'], reverse=True)
             st.write(f"#### {st.session_state.query_prompt}")
-            st.write("You may interested in (most cited):")
+            st.write("You may interested in (most cited from current search results):")
             for article in sorted_search_result[:3]:
                 with st.container(border=True):
                     col_title, col_link, col_chat_btn = st.columns([6, 1, 2])
@@ -280,15 +297,23 @@ with col_right.container():
                         st.caption(f"**Abstract:** {article['abstract']}")
         
     for message in current_node.messages:
-        with st.chat_message(message.role):
-            st.write(message.message, unsafe_allow_html=True)
+        if not message.skip:
+            with st.chat_message(message.role):
+                st.write(message.message, unsafe_allow_html=True)
+    if current_node.chat_summary:
+        with st.chat_message("assistant"):
+            st.write(f"**[ Here is the summary of chats above. You may expect this in your PPT. ]** \n\n {current_node.chat_summary}")
     if current_node.current_stream:
         with st.chat_message("assistant"):
             logger.info("start writing stream...")
             response = st.write_stream(current_node.current_stream)
         logger.info("stream chat written.")
-        current_node.messages.append(ChatMessage(
-            role="assistant", message=response))
+        if current_node.next_stream_is_summary:
+            current_node.chat_summary = response
+            current_node.next_stream_is_summary = False
+        else:
+            message = ChatMessage(role="assistant", message=response)
+            current_node.messages.append(message)
         current_node.current_stream = None
         if not current_node.related_questions:
             get_paper_related_questions(current_node, response)
@@ -315,6 +340,16 @@ with col_right.container():
             current_node.current_stream = chat_on_paper_with_moonshot(
                 current_node.paper_content, current_node.messages)
             st.rerun()
+        st.divider()
+        col1, col_summary_to_ppt, col_drop_paper = st.columns([2,1,1])
+        with col1.container():
+            st.write("Satisfied with answer?")
+        with col_summary_to_ppt.container():
+            if current_node.messages:
+                st.button("Summay into PPT", on_click=summarize_chat_to_single_slide, args=(current_node,), use_container_width=True)
+        with col_drop_paper.container():
+            popover = st.popover("Drop it", use_container_width=True)
+            popover.button("Confirm", on_click=remove_node, args=(current_node,), type="primary", use_container_width=True)
 
     if query_on_start := st.session_state.query_on_start:
         st.session_state.query_on_start = ""

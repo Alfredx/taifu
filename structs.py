@@ -6,6 +6,8 @@ from typing import List, Any, Literal
 class ChatMessage(object):
     role: str = ""  # either assistant or user
     message: str = ""
+    vote: Literal["up", "down", "none"] = "none"
+    skip: bool = False
 
 
 @dataclass
@@ -22,9 +24,11 @@ class Node(object):
     paper_content: str = ""
     paper_summary: str = ""
     current_stream: Any = None
+    next_stream_is_summary: bool = False
     node_type: Literal["concept", "paper"] = "concept"  # either concept or paper
     messages: List[ChatMessage] = field(default_factory=list)
     need_upload_paper: bool = False
+    chat_summary: str = ""
 
     def get_child_by_name(self, name: str) -> "Node":
         for child in self.children:

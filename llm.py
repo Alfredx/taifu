@@ -11,6 +11,7 @@ from typing_extensions import Annotated
 from loguru import logger
 
 import tool
+from structs import ChatMessage
 
 
 class LLMModel(object):
@@ -171,7 +172,8 @@ def get_related_questions(query, contexts):
             f" {e}\n{traceback.format_exc()}"
         )
         return []
-    
+
+
 def get_related_concepts(query, contexts):
     """
     Gets related concepts based on the query and context.
@@ -179,11 +181,11 @@ def get_related_concepts(query, contexts):
 
     def ask_related_concepts(
         concepts: Annotated[List[str],
-                             [(
-                                 "concept",
-                                 Annotated[str, "Concept that metioned but not fully explained in the paper"],
-                             )],
-                             ]
+                            [(
+                                "concept",
+                                Annotated[str, "Concept that metioned but not fully explained in the paper"],
+                            )],
+                            ]
     ):
         """
         ask related concepts metioned but not fully explained in the paper.
@@ -232,9 +234,9 @@ def get_related_concepts(query, contexts):
             f" {e}\n{traceback.format_exc()}"
         )
         return []
-    
 
-def chat_on_paper_with_moonshot(paper_content, messages):
+
+def chat_on_paper_with_moonshot(paper_content: str, messages: List[ChatMessage]):
     llm = LLMModel(
         api_key=st.secrets['MOONSHOT_API_KEY'], model='moonshot-v1-128k', api_base="https://api.moonshot.cn/v1")
     messages_for_completion = [
@@ -265,7 +267,7 @@ def chat_on_paper_with_moonshot(paper_content, messages):
     return stream
 
 
-def summarize_query_to_name(query):
+def summarize_query_to_name(query: str):
     llm = LLMModel(
         api_key=st.secrets['OPENAI_API_KEY'], model='gpt-4-0125-preview')
     response = llm.client.chat.completions.create(
@@ -285,7 +287,7 @@ def summarize_query_to_name(query):
     return response.choices[0].message.content
 
 
-def is_answer_denying_query(query, answer):
+def is_answer_denying_query(query: str, answer: str):
     llm = LLMModel(
         api_key=st.secrets['OPENAI_API_KEY'], model='gpt-4-0125-preview')
 
@@ -322,14 +324,15 @@ def is_answer_denying_query(query, answer):
     return is_denying['is_denying']
 
 
-def summarize_paper_with_moonshot(filepath, remove=False):
+def summarize_paper_with_moonshot(filepath: str, remove: bool = False):
     llm = LLMModel(
         api_key=st.secrets['MOONSHOT_API_KEY'], model='moonshot-v1-32k', api_base="https://api.moonshot.cn/v1")
     logger.info("sending chat to moonshot...")
     # llm = LLMModel(
     #     api_key=st.secrets['OPENAI_API_KEY'], model='gpt-4-0125-preview')
     # logger.info("sending chat to gpt4...")
-    file_object = llm.client.files.create(file=Path(filepath), purpose="file-extract")
+    file_object = llm.client.files.create(
+        file=Path(filepath), purpose="file-extract")
     file_content = llm.client.files.content(file_id=file_object.id).text
     stream = llm.client.chat.completions.create(
         model=llm.model,
@@ -344,7 +347,7 @@ def summarize_paper_with_moonshot(filepath, remove=False):
             },
             {
                 "role": "user",
-                "content": f"I will tip you 500 dollars for a better result! Summarize this paper for me. You are going to do these in two steps. First, extract the title of the paper, the name of the Authors, the affiliation, the submission Date, the abstract, and the titles of each chapter. Second, summarize each chapter including its key points and the user's opinion with bullet dots. You are going to do these step by step. Output all the information you extracted one by one in a well-structured Markdown format. After each title, put a '\n\n' at the end. Remember, ONLY output the summary. This is very important to me. ",
+                "content": f"I will tip you 500 dollars for a better result! Summarize this paper for me. You are going to do these in two steps. First, extract the title of the paper, the name of the Authors, the affiliation, the submission Date, the abstract, and the titles of each chapter. Second, summarize each chapter including its key points and the author's opinion with bullet points. You are going to do these step by step. Output all the information you extracted one by one in a well-structured Markdown format. After each title, put a '\n\n' at the end. Remember, ONLY output the summary. This is very important to me. ",
             },
             {
                 "role": "assistant",
@@ -390,4 +393,30 @@ this is conclusions.</details>
     )
     if remove and os.path.exists(filepath):
         os.remove(filepath)
+    return stream
+
+
+def summarize_chat(messages: List[ChatMessage]):
+    llm = LLMModel(
+        api_key=st.secrets['MOONSHOT_API_KEY'], model='moonshot-v1-32k', api_base="https://api.moonshot.cn/v1")
+    logger.info("sending chat to moonshot...")
+    # llm = LLMModel(
+    #     api_key=st.secrets['OPENAI_API_KEY'], model='gpt-4-0125-preview')
+    # logger.info("sending chat to gpt4...")
+    completion_messages = [
+        {
+            "role": "system",
+            "content": "You are Kimi, an AI chat summarizing assistant created by Moonshot."
+        },
+    ]
+    completion_messages += [{"role": m.role, "content":m.message} for m in messages if not m.skip]
+    completion_messages.append({
+        "role": "user",
+        "content": "I will tip you 500 dollars again for a better result! Summarize our previous chat messages into bullet points in my voice. You must keep the conclusion and my opinion from our chat and keep them short so they can be put into a single slide. ONLY output the summary. Remember, this is very important to me."
+    })
+    stream = llm.client.chat.completions.create(
+        model=llm.model,
+        messages=completion_messages,
+        stream=True,
+    )
     return stream
