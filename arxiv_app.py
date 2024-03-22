@@ -1,6 +1,8 @@
 
-from datetime import date
+import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
+from uuid import uuid4
 
 import streamlit as st
 from loguru import logger
@@ -8,13 +10,12 @@ from streamlit_markmap import markmap
 
 from llm import (chat_on_paper_with_moonshot, get_rag_query,
                  get_related_concepts, get_related_questions,
-                 is_answer_denying_query, summarize_paper_with_moonshot, summarize_chat,
-                 summarize_query_to_name)
+                 is_answer_denying_query, summarize_chat,
+                 summarize_paper_with_moonshot, summarize_query_to_name)
 from search.arxiv import ArxivSearch
 from search.gscholar import GoogleScholarSearch
 from slides import SlidesGenerator
 from structs import ChatMessage, Node
-import fitz
 
 st.set_page_config(page_title="Taifu-太傅", layout="wide")
 
@@ -40,6 +41,8 @@ if "ppt_download_path" not in st.session_state:
 if "search" not in st.session_state:
     search = GoogleScholarSearch()
     st.session_state.search = search
+if "node_tree_download_path" not in st.session_state:
+    st.session_state.node_tree_download_path = ""
 
 
 def buildMarkmapData(node: Node, depth: int = 0) -> str:
@@ -198,6 +201,18 @@ def summarize_chat_to_single_slide(current_node: Node):
     current_node.current_stream = summarize_chat(current_node.messages)
     current_node.next_stream_is_summary = True
 
+def gen_node_tree():
+    random_name = str(uuid4()).replace("-", "_") + ".taifu"
+    with open(random_name, "w") as f:
+        json.dump(st.session_state.root_node.to_json(), f)
+    st.session_state.node_tree_download_path = random_name
+
+def import_node_tree(import_file):
+    json_obj = json.load(import_file)
+    node = Node.from_json(json_obj)
+    st.session_state.root_node = node
+    st.session_state.current_node = node
+    st.session_state.query_on_start = node.name
 
 current_node = st.session_state.current_node
 with st.sidebar:
@@ -222,6 +237,21 @@ with st.sidebar:
     st.write("Child nodes")
     for child in current_node.children:
         st.button(child.display_name, on_click=switch_to_node, args=(child, ))
+
+    st.divider()
+    st.text("导出/入脑图")
+    st.button("Export", on_click=gen_node_tree, use_container_width=True)
+    if st.session_state.node_tree_download_path:
+        with open(st.session_state.node_tree_download_path, "rb") as node_tree:
+            st.download_button("Download", data=node_tree, file_name=st.session_state.node_tree_download_path, use_container_width=True)
+
+    with st.form("my-form", clear_on_submit=True, border=False):
+        file = st.file_uploader("import", "taifu", label_visibility="collapsed")
+        submitted = st.form_submit_button("Import", use_container_width=True)
+        if submitted and file is not None:
+            import_node_tree(file)
+
+
 col_left, col_right = st.columns([2, 3])
 with col_left.container():
     current_node = st.session_state.current_node

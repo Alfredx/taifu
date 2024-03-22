@@ -6,5 +6,6 @@ __pycache__
 *.ppt
 *.pptx
 arxiv_pdf
+*.taifu
 
 .DS_Store

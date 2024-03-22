@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Any, Literal
+from typing import List, Any, Literal, Dict
 
 
 @dataclass
@@ -9,6 +9,18 @@ class ChatMessage(object):
     vote: Literal["up", "down", "none"] = "none"
     skip: bool = False
 
+    def to_json(self):
+        json_obj = {}
+        for key in self.__dataclass_fields__.keys():
+            json_obj[key] = getattr(self, key)
+        return json_obj
+    
+    @classmethod
+    def from_json(cls, json_obj: Dict[str, Any]):
+        obj = cls()
+        for k, v in json_obj.items():
+            setattr(obj, k, v)
+        return obj
 
 @dataclass
 class Node(object):
@@ -50,3 +62,34 @@ class Node(object):
         if self.node_type == "paper":
             return f"📜{self.name}"
         return self.name
+    
+    def to_json(self):
+        json_obj = {}
+        for key, _ in self.__dataclass_fields__.items():
+            if key == "prev":
+                json_obj[key] = None
+            elif key == "children":
+                json_obj[key] = [child.to_json() for child in self.children]
+            elif key == "messages":
+                json_obj[key] = [m.to_json() for m in self.messages]
+            else:
+                json_obj[key] = getattr(self, key)
+        return json_obj
+        
+    @classmethod
+    def from_json(cls, json_obj: Dict[str, Any]):
+        obj = cls()
+        for k, v in json_obj.items():
+            if k == "prev":
+                setattr(obj, k, None)
+            elif k == "children":
+                children = [Node.from_json(child) for child in v]
+                for c in children:
+                    c.prev = obj
+                setattr(obj, k, children)
+            elif k == "messages":
+                messages = [ChatMessage.from_json(m) for m in v]
+                setattr(obj, k, messages)
+            else:
+                setattr(obj, k, v)
+        return obj
